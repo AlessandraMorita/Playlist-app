@@ -4,14 +4,20 @@ import {SearchBar} from '../SearchBar/SearchBar.js';
 import {SearchResults} from '../SearchResults/SearchResults.js';
 import {PlayList} from '../Playlist/PlayList.js';
 import {Spotify} from '../../util/Spotify.js';
+import ls from 'local-storage';
 
 export class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = { 
       searchResults: [],
-      playlistName: 'First Playlist',
-      playlistTracks: []
+      playlistName: '',
+      playlistTracks: [],
+      localFileSearchTerm: '',
+      localFileSearchResults: [],
+      localFilePlaylistName: '',
+      localFilePlaylistTracks: [],
+      localFileSave: false
     };
     this.addTrack = this.addTrack.bind(this);
     this.removeTrack = this.removeTrack.bind(this);
@@ -20,46 +26,128 @@ export class App extends React.Component {
     this.search = this.search.bind(this);
   }
 
-  addTrack(track) {
-    let hasSameId = this.state.playlistTracks.find(savedTrack => {
-      return savedTrack.id === track.id;
+  async search(term) {
+    // Set localFileSearchTerm
+    if(this.state.localFileSearchTerm !== term) {
+      this.setState({
+        localFileSearchTerm: term,
+      });
+      ls.set('localFileSearchTerm', term);
+    };
+
+    // Search
+    let searchResults = await Spotify.search(term);
+    
+    // Set localFileSearchResults
+    this.setState({ 
+      searchResults: searchResults,
+      localFileSearchTerm: '',
+      localFileSearchResults: searchResults
     });
-    if (!hasSameId) {
+    ls.set('localFileSearchResults', searchResults);
+  }
+
+  addTrack(track) {
+    let isTrackNew = this.state.playlistTracks.every(addedTrack => {
+      return addedTrack.id !== track.id;
+    });
+    if(isTrackNew) {
       let newPlaylistTracks = this.state.playlistTracks;
       newPlaylistTracks.push(track);
-      this.setState({ playlistTracks: newPlaylistTracks });
-    }
+      this.setState({ 
+        playlistTracks: newPlaylistTracks,
+        localFilePlaylistTracks: newPlaylistTracks
+      });
+      ls.set('localFilePlaylistTracks', newPlaylistTracks);
+    };
+
+    let updateSearchResults = this.state.searchResults.filter((elem) => {
+      return elem.id !== track.id;
+    });
+    this.setState({ searchResults: updateSearchResults });
+
   }
 
   removeTrack(track) {
-    let trackIndex = this.state.playlistTracks.findIndex(savedTrack => {
-      return savedTrack.id === track.id;
+    let trackIndex = this.state.playlistTracks.findIndex(addedTrack => {
+      return addedTrack.id === track.id;
     });
     let newPlaylistTracks = this.state.playlistTracks;
     newPlaylistTracks.splice(trackIndex, 1);
-    this.setState({ playlistTracks: newPlaylistTracks });
+    this.setState({ 
+      playlistTracks: newPlaylistTracks,
+      localFilePlaylistTracks: newPlaylistTracks
+    });
+    ls.set('localFilePlaylistTracks', newPlaylistTracks);
+
+    let isTrackNew = this.state.searchResults.every(searchTrack => {
+      return searchTrack.id !== track.id;
+    });
+    if(isTrackNew) {
+      let updateSearchResults = this.state.searchResults;
+      updateSearchResults.push(track);
+      this.setState({ searchResults: updateSearchResults });
+    };
+
+    
   }
 
   updatePlaylistName(name) {
     this.setState({ playlistName: name });
+
+    // Set localFilePlaylistName
+    this.setState({
+      localFilePlaylistName: name,
+    });
+    ls.set('localFilePlaylistName', name);
   }
 
-  async savePlaylist() {
+  async savePlaylist(playlistName, playlistTracks) {
+    // Set localFileSave
+    this.setState({
+      localFileSave: true
+    });
+    ls.set('localFileSave', true);
+
     let trackURIs = [];
-    for (const track of this.state.playlistTracks) {
+    for (const track of playlistTracks) {
       trackURIs.push(track.uri);
     }
-    let playListSaved = await Spotify.savePlaylist(this.state.playlistName, trackURIs);
-    if (playListSaved) {
-      this.setState({ playlistName: '' });
-      this.setState({ playlistTracks: [] });
-    }
-    return playListSaved;
-  }
 
-  async search(term) {
-    let searchResults = await Spotify.search(term);
-    this.setState({ searchResults: searchResults});
+    // Save Playlist
+    let isplayListSaved = await Spotify.savePlaylist(playlistName, trackURIs);
+
+    // Reset localFilePlaylistName
+    // Reset localFilePlaylistTracks
+    // Reset localFileSave
+    if(isplayListSaved) {
+      // Update Data
+      this.setState({ 
+        searchResults: ls.get('localFileSearchResults'),
+        playlistName: '',
+        playlistTracks: [],
+        localFilePlaylistName: '',
+        localFilePlaylistTracks: [],
+        localFileSave: false
+      });
+      ls.set('localFilePlaylistName', '');
+      ls.set('localFilePlaylistTracks', []);
+      ls.set('localFileSave', false);
+
+      // User message
+      document.getElementById('addUserFeedback').innerHTML = 'Saved successfully!';
+      document.getElementById('addUserFeedback').style.color = 'green';
+      document.getElementById('playListName').value = '';
+      window.setTimeout(() =>  document.getElementById('addUserFeedback').innerHTML = '', 3000);
+    } else {
+        document.getElementById('addUserFeedback').innerHTML = 'Failed to add your Play List :(';
+        document.getElementById('addUserFeedback').style.color = 'red';
+        document.getElementById('playListName').style.border = '1px solid red';
+        window.setTimeout(() =>  {
+            document.getElementById('addUserFeedback').innerHTML = '';
+            document.getElementById('playListName').style.border = '';
+        }, 3000);
+    }
   }
 
   render() {
@@ -75,5 +163,30 @@ export class App extends React.Component {
         </div>
       </div>
     );
+  }
+
+  async componentDidMount() {
+    // Restore Playlist Data
+    let isPlaylistName = await ls.get('localFilePlaylistName');
+    if(!this.state.playlistName && isPlaylistName) {
+      this.setState({ playlistName: isPlaylistName });
+    };
+
+    let isPlaylistTracks = await ls.get('localFilePlaylistTracks');
+    if(!this.state.playlistTracks.length && isPlaylistTracks?.length) {
+      this.setState({ playlistTracks: isPlaylistTracks });
+    };
+
+    // Restore Search
+    let isSearch = await ls.get('localFileSearchTerm');
+    if(isSearch) {
+      this.search(isSearch);
+    };
+
+    // Restore SavePlaylist
+    let isSavePlaylist = await ls.get('localFileSave');
+    if(isSavePlaylist) {
+      this.savePlaylist(isPlaylistName, isPlaylistTracks);
+    };
   }
 }

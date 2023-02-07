@@ -32,9 +32,9 @@ export const Spotify = {
                 expiresIn = searchExpiresData[1];
             }
             
-            window.setTimeout(() => accessToken = '', expiresIn * 1000);
+            window.setTimeout(() => accessToken = '', expiresIn );
             window.history.pushState('Access Token', null, '/');
-            
+
         }
     },
 

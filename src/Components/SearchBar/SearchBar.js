@@ -5,7 +5,6 @@ export class SearchBar extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            term: '',
             searchBarTerm: ''
         };
         this.search =  this.search.bind(this);
@@ -14,7 +13,7 @@ export class SearchBar extends React.Component {
     }
 
     search() {
-        this.setState({term: this.props.onSearch(this.state.searchBarTerm)});
+        this.props.onSearch(this.state.searchBarTerm);
     }
     
     handleTermChange(event) {

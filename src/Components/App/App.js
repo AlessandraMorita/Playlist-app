@@ -189,6 +189,7 @@ export class App extends React.Component {
       this.search(isSearch);
     };
 
+    
     // Restore SavePlaylist
     let isSavePlaylist = await ls.get('localFileSave');
     if(isSavePlaylist) {

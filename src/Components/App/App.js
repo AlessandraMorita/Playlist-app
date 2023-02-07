@@ -41,7 +41,6 @@ export class App extends React.Component {
     // Set localFileSearchResults
     this.setState({ 
       searchResults: searchResults,
-      localFileSearchTerm: '',
       localFileSearchResults: searchResults
     });
     ls.set('localFileSearchResults', searchResults);
@@ -64,7 +63,11 @@ export class App extends React.Component {
     let updateSearchResults = this.state.searchResults.filter((elem) => {
       return elem.id !== track.id;
     });
-    this.setState({ searchResults: updateSearchResults });
+    this.setState({ 
+      searchResults: updateSearchResults,
+      localFileSearchResults: updateSearchResults
+    });
+    ls.set('localFileSearchResults', updateSearchResults);
 
   }
 
@@ -86,10 +89,12 @@ export class App extends React.Component {
     if(isTrackNew) {
       let updateSearchResults = this.state.searchResults;
       updateSearchResults.push(track);
-      this.setState({ searchResults: updateSearchResults });
-    };
-
-    
+      this.setState({ 
+        searchResults: updateSearchResults,
+        localFileSearchResults: updateSearchResults
+       });
+      ls.set('localFileSearchResults', updateSearchResults);
+    };    
   }
 
   updatePlaylistName(name) {
@@ -117,19 +122,20 @@ export class App extends React.Component {
     // Save Playlist
     let isplayListSaved = await Spotify.savePlaylist(playlistName, trackURIs);
 
-    // Reset localFilePlaylistName
-    // Reset localFilePlaylistTracks
-    // Reset localFileSave
     if(isplayListSaved) {
-      // Update Data
+      // Reset Data
       this.setState({ 
-        searchResults: ls.get('localFileSearchResults'),
+        searchResults: [],
         playlistName: '',
         playlistTracks: [],
+        localFileSearchTerm: '',
+        localFileSearchResults: [],
         localFilePlaylistName: '',
         localFilePlaylistTracks: [],
         localFileSave: false
       });
+      ls.set('localFileSearchTerm', '');
+      ls.set('localFileSearchResults', []);
       ls.set('localFilePlaylistName', '');
       ls.set('localFilePlaylistTracks', []);
       ls.set('localFileSave', false);

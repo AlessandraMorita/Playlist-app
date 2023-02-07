@@ -21,8 +21,21 @@ Contents
  
  ## How To Use?
  
- Click the link, and you’ll be directed to the deployed site:
-  https://playlist-spotify-api.netlify.app/
+ You'll need [Node.js](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer.
+ 
+ ```bash
+# Clone this repository
+$ git clone https://github.com/AlessandraMorita/Playlist-app
+
+# Go into the repository
+$ cd Playlist-app
+
+# Installs the required dependencies
+$ npm install
+
+# Run the React project
+$ npm start
+```
 
 ## Technologies
 
